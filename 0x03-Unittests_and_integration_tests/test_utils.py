@@ -1,68 +1,106 @@
 #!/usr/bin/env python3
-"""Module containing  unit test for utils package"""
-from unittest import TestCase
+"""
+Tests for utils.py module
+"""
+import unittest
 from parameterized import parameterized
-from utils import access_nested_map
-from utils import get_json
+from typing import (
+    Dict, Tuple, Union
+)
 from unittest.mock import patch
-from utils import memoize
+from utils import access_nested_map, get_json, memoize
 
 
-class TestAccessNestedMap(TestCase):
-    """Class that defines attributes to test utils.access_nested_map func"""
-
-    @parameterized.expand([({"a": 1}, ("a",), 1), ({"a": {
-        "b": 2}}, ("a",), {"b": 2}), ({"a": {"b": 2}}, ("a", "b"), 2)])
-    def test_access_nested_map(self, nested_map, path, res):
-        """Method to test that access_nested_map returns the right result"""
-
-        self.assertEqual(access_nested_map(nested_map, path), res)
-
-    @parameterized.expand([({}, ("a",)), ({"a": 1}, ("a", "b"))])
-    def test_access_nested_map_exception(self,  nested_map, path):
-        """Method to test that access_nested_map handles errors correctly"""
-
-        with self.assertRaises(KeyError) as err:
+class TestAccessNestedMap(unittest.TestCase):
+    """
+    Defines method to test nested map access
+    """
+    @parameterized.expand([
+        ({"a": 1}, ("a",), 1),
+        ({"a": {"b": 2}}, ("a",), {"b": 2}),
+        ({"a": {"b": 2}}, ("a", "b"), 2),
+    ])
+    def test_access_nested_map(
+            self, nested_map: Dict,
+            path: Tuple[str], expected: Union[int, Dict]
+            ) -> None:
+        """
+        Test access to nested map
+        Args:
+            nested_map (Dict): nested dictionary
+            path (Tuple): tuple of possible dictionary keys
+            expected (int | Dict): expected result of tested function
+        Returns:
+            None
+        """
+        self.assertEqual(
+            expected,
             access_nested_map(nested_map, path)
-        self.assertEqual(err.exception.args[0], path[-1])
+        )
+
+    @parameterized.expand([
+        ({}, ("a",)),
+        ({"a": 1}, ("a", "b")),
+    ])
+    def test_access_nested_map_exception(
+            self, nested_map: Dict, path: Tuple[str]
+            ) -> None:
+        """
+        Test if an exception is correctly raised
+        Args:
+            same as described above
+        Returns:
+            None
+        """
+        with self.assertRaises(KeyError):
+            access_nested_map(nested_map, path)
 
 
-class TestGetJson(TestCase):
-    """Class that defines attributes to test utils.get_json function"""
+class TestGetJson(unittest.TestCase):
+    """
+    Defines tests for get_json utility
+    """
+    @parameterized.expand([
+        ("http://example.com", {"payload": True}),
+        ("http://holberton.io", {"payload": False}),
+    ])
+    def test_get_json(self, test_url: str,
+                      test_payload: Dict[str, bool]) -> None:
+        """
+        Test that it returns a valid json payload
+        Args:
+            test_url (str): url to make a request to
+            test_payload (Dict): expected payload from the response
+        Returns:
+            None
+        """
+        config = {'return_value.json.return_value': test_payload}
+        with patch('requests.get', autospec=True, **config) as mockRequestGet:
+            self.assertEqual(get_json(test_url), test_payload)
+            mockRequestGet.assert_called_once_with(test_url)
 
-    @parameterized.expand([("http://example.com", {
-        "payload": True}), ("http://holberton.io", {"payload": False})])
-    @patch('test_utils.get_json')
-    def test_get_json(self, test_url, test_payload, mock):
-        """Method to test that utils.get_json returns the expected result"""
 
-        mock.return_value = test_payload
-        res = get_json(test_url)
-        self.assertEqual(res, test_payload)
-
-
-class TestMemoize(TestCase):
-    """Class that defines attributes to test utils.memoize function"""
-
-    def test_memoize(self):
-        """Method that using test memorize to check if func is called twice"""
-
+class TestMemoize(unittest.TestCase):
+    """
+    Defines test for memoize utility function
+    """
+    def test_memoize(self) -> None:
+        """
+        Test memoize function
+        """
         class TestClass:
-            """Class that defines attributes to test memoize"""
-
+            """
+            Test class
+            """
             def a_method(self):
-                """Method that returns an instance of memoize class"""
-
                 return 42
 
             @memoize
             def a_property(self):
-                """Method that defines a property instance of memoize"""
-
                 return self.a_method()
 
-        with patch.object(TestClass, "a_method") as mock:
+        with patch.object(TestClass, 'a_method') as mockMethod:
             test = TestClass()
-            test.a_property
-            test.a_property
-            mock.assert_called_once
+            self.assertEqual(test.a_property, mockMethod.return_value)
+            self.assertEqual(test.a_property, mockMethod.return_value)
+            mockMethod.assert_called_once()
